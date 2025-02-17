@@ -5,6 +5,10 @@ description: >-
   A GitHub Action maintaining caches dependent on Python runtime
   and ABI stability.
 
+branding:
+  icon: archive
+  color: black
+
 inputs:
   cache-directory-lookup-command:
     description: A command that prints cache directory to standard output.
