@@ -1,0 +1,311 @@
+---
+
+ci:
+  autoupdate_schedule: quarterly  # low frequency to reduce maintenance noise
+
+repos:
+- repo: local
+  hooks:
+  - id: forbidden-files
+    name: Verify that forbidden files are not present in the repo
+    entry: >-
+      `setup.py` shouldn't be in the root because we fully rely on PEP 621.
+      `__init__.py` shouldn't be present to avoid clashes in namespace packages.
+      The `tests/__init__.py` module must not exist so `pytest` doesn't add the
+      project root to `sys.path` / `$PYTHONPATH`
+    files: >-
+      (?x)
+      ^
+      (?:
+        setup
+        |src(?:
+          /[^/]+(?:
+            /[^/]+
+          )?
+        )?/__init__
+        |tests/__init__
+      )\.py
+      $
+    language: fail
+    types: []
+    types_or:
+    - file
+    - symlink
+
+- repo: https://github.com/Kludex/no-optional.git
+  rev: 0.4.0
+  hooks:
+  - id: no_optional
+
+- repo: https://github.com/astral-sh/ruff-pre-commit.git
+  rev: v0.15.9
+  hooks:
+  - id: ruff-check
+    args:
+    # Ref: https://docs.astral.sh/ruff/formatter/#conflicting-lint-rules
+    - --exit-non-zero-on-fix
+    - --fix  # NOTE: When `--fix` is used, linting should be before ruff-format
+    - --show-fixes
+
+- repo: https://github.com/astral-sh/ruff-pre-commit.git
+  rev: v0.15.9
+  hooks:
+  - id: ruff-format
+    alias: ruff-format-first-pass
+    name: ruff-format (first pass)
+
+- repo: https://github.com/asottile/add-trailing-comma.git
+  rev: v4.0.0
+  hooks:
+  - id: add-trailing-comma
+
+- repo: https://github.com/astral-sh/ruff-pre-commit.git
+  rev: v0.15.9
+  hooks:
+  - id: ruff-format
+    alias: ruff-format-second-pass
+    name: ruff-format (second pass)
+
+- repo: https://github.com/Lucas-C/pre-commit-hooks.git
+  rev: v1.5.6
+  hooks:
+  - id: remove-tabs
+
+- repo: https://github.com/python-jsonschema/check-jsonschema.git
+  rev: 0.37.1
+  hooks:
+  - id: check-github-workflows
+    files: ^\.github/workflows/[^/]+$
+    types:
+    - yaml
+  - id: check-jsonschema
+    name: Check GitHub Workflows set timeout-minutes
+    args:
+    - --builtin-schema
+    - github-workflows-require-timeout
+    files: ^\.github/workflows/[^/]+$
+    types:
+    - yaml
+  - id: check-readthedocs
+
+- repo: https://github.com/andreoliwa/nitpick.git
+  rev: v0.38.1
+  hooks:
+  - id: nitpick-check
+    files: >-  # disabled
+      ^$
+    pass_filenames: false
+
+- repo: https://github.com/pre-commit/pygrep-hooks.git
+  rev: v1.10.0
+  hooks:
+  - id: python-check-blanket-noqa
+  - id: python-check-mock-methods
+  - id: python-no-eval
+  - id: python-no-log-warn
+  - id: rst-backticks
+
+- repo: https://github.com/pre-commit/pre-commit-hooks.git
+  rev: v6.0.0
+  hooks:
+  # Side-effects:
+  - id: trailing-whitespace
+  - id: check-merge-conflict
+  - id: end-of-file-fixer
+  - id: fix-byte-order-marker
+  - id: mixed-line-ending
+
+  # Non-modifying checks:
+  - id: name-tests-test
+    files: >-
+      ^tests/[^_].*\.py$
+  - id: check-added-large-files
+  - id: check-case-conflict
+  - id: check-executables-have-shebangs
+  - id: check-json
+  - id: check-symlinks
+  - id: check-toml
+  - id: check-yaml
+  - id: detect-private-key
+
+  # Heavy checks:
+  - id: check-ast
+  - id: debug-statements
+
+- repo: https://github.com/codespell-project/codespell.git
+  rev: v2.4.2
+  hooks:
+  - id: codespell
+
+- repo: https://github.com/adrienverge/yamllint.git
+  rev: v1.38.0
+  hooks:
+  - id: yamllint
+    types:
+    - file
+    - yaml
+    args:
+    - --strict
+
+- repo: https://github.com/openstack/bashate.git
+  rev: 2.1.1
+  hooks:
+  - id: bashate
+
+- repo: https://github.com/shellcheck-py/shellcheck-py.git
+  rev: v0.11.0.1
+  hooks:
+  - id: shellcheck
+
+- repo: https://github.com/Lucas-C/pre-commit-hooks-lxml.git
+  rev: v1.1.0
+  hooks:
+  - id: forbid-html-img-without-alt-text
+
+- repo: https://github.com/PyCQA/flake8.git
+  rev: 7.3.0
+  hooks:
+  - id: flake8
+    additional_dependencies:
+    - darglint ~= 1.8.1
+    - flake8-2020 ~= 1.8.1
+    - flake8-annotations ~= 3.2.0
+    - flake8-comprehensions ~= 3.17.0
+    - flake8-docstrings ~= 1.7.0
+    - flake8-length ~= 0.3.1
+    - flake8-logging ~= 1.8.0
+    - flake8-pyi ~= 24.1.0
+    - flake8-pytest-style ~= 2.2.0
+    - flake8-typing-as-t ~= 1.1.0
+    - wemake-python-styleguide ~= 1.5.0
+    language_version: python3
+
+- repo: https://github.com/pre-commit/mirrors-mypy.git
+  rev: v1.19.1
+  hooks:
+  - id: mypy
+    alias: mypy-py315
+    name: MyPy, for Python 3.15
+    additional_dependencies:
+    - lxml  # dep of `--txt-report`, `--cobertura-xml-report` & `--html-report`
+    - pytest-subtests
+    - tox [testing] >= 4.54.0
+    args:
+    - --python-version=3.15
+    - --any-exprs-report=.tox/.tmp/.test-results/mypy--py-3.15
+    - --cobertura-xml-report=.tox/.tmp/.test-results/mypy--py-3.15
+    - --html-report=.tox/.tmp/.test-results/mypy--py-3.15
+    - --linecount-report=.tox/.tmp/.test-results/mypy--py-3.15
+    - --linecoverage-report=.tox/.tmp/.test-results/mypy--py-3.15
+    - --lineprecision-report=.tox/.tmp/.test-results/mypy--py-3.15
+    - --txt-report=.tox/.tmp/.test-results/mypy--py-3.15
+    pass_filenames: false
+  - id: mypy
+    alias: mypy-py314
+    name: MyPy, for Python 3.14
+    additional_dependencies:
+    - lxml
+    - pytest-subtests
+    - tox [testing] >= 4.54.0
+    args:
+    - --python-version=3.14
+    - --any-exprs-report=.tox/.tmp/.test-results/mypy--py-3.14
+    - --cobertura-xml-report=.tox/.tmp/.test-results/mypy--py-3.14
+    - --html-report=.tox/.tmp/.test-results/mypy--py-3.14
+    - --linecount-report=.tox/.tmp/.test-results/mypy--py-3.14
+    - --linecoverage-report=.tox/.tmp/.test-results/mypy--py-3.14
+    - --lineprecision-report=.tox/.tmp/.test-results/mypy--py-3.14
+    - --txt-report=.tox/.tmp/.test-results/mypy--py-3.14
+    pass_filenames: false
+  - id: mypy
+    alias: mypy-py313
+    name: MyPy, for Python 3.13
+    additional_dependencies:
+    - lxml
+    - pytest-subtests
+    - tox [testing] >= 4.54.0
+    args:
+    - --python-version=3.13
+    - --any-exprs-report=.tox/.tmp/.test-results/mypy--py-3.13
+    - --cobertura-xml-report=.tox/.tmp/.test-results/mypy--py-3.13
+    - --html-report=.tox/.tmp/.test-results/mypy--py-3.13
+    - --linecount-report=.tox/.tmp/.test-results/mypy--py-3.13
+    - --linecoverage-report=.tox/.tmp/.test-results/mypy--py-3.13
+    - --lineprecision-report=.tox/.tmp/.test-results/mypy--py-3.13
+    - --txt-report=.tox/.tmp/.test-results/mypy--py-3.13
+    pass_filenames: false
+  - id: mypy
+    alias: mypy-py312
+    name: MyPy, for Python 3.12
+    additional_dependencies:
+    - lxml
+    - pytest-subtests
+    - tox [testing] >= 4.54.0
+    args:
+    - --python-version=3.12
+    - --any-exprs-report=.tox/.tmp/.test-results/mypy--py-3.12
+    - --cobertura-xml-report=.tox/.tmp/.test-results/mypy--py-3.12
+    - --html-report=.tox/.tmp/.test-results/mypy--py-3.12
+    - --linecount-report=.tox/.tmp/.test-results/mypy--py-3.12
+    - --linecoverage-report=.tox/.tmp/.test-results/mypy--py-3.12
+    - --lineprecision-report=.tox/.tmp/.test-results/mypy--py-3.12
+    - --txt-report=.tox/.tmp/.test-results/mypy--py-3.12
+    pass_filenames: false
+  - id: mypy
+    alias: mypy-py311
+    name: MyPy, for Python 3.11
+    additional_dependencies:
+    - lxml
+    - pytest-subtests
+    - tox [testing] >= 4.54.0
+    args:
+    - --python-version=3.11
+    - --any-exprs-report=.tox/.tmp/.test-results/mypy--py-3.11
+    - --cobertura-xml-report=.tox/.tmp/.test-results/mypy--py-3.11
+    - --html-report=.tox/.tmp/.test-results/mypy--py-3.11
+    - --linecount-report=.tox/.tmp/.test-results/mypy--py-3.11
+    - --linecoverage-report=.tox/.tmp/.test-results/mypy--py-3.11
+    - --lineprecision-report=.tox/.tmp/.test-results/mypy--py-3.11
+    - --txt-report=.tox/.tmp/.test-results/mypy--py-3.11
+    pass_filenames: false
+  - id: mypy
+    alias: mypy-py310
+    name: MyPy, for Python 3.10
+    additional_dependencies:
+    - lxml
+    - pytest-subtests
+    - tox [testing] >= 4.54.0
+    args:
+    - --python-version=3.10
+    - --any-exprs-report=.tox/.tmp/.test-results/mypy--py-3.10
+    - --cobertura-xml-report=.tox/.tmp/.test-results/mypy--py-3.10
+    - --html-report=.tox/.tmp/.test-results/mypy--py-3.10
+    - --linecount-report=.tox/.tmp/.test-results/mypy--py-3.10
+    - --linecoverage-report=.tox/.tmp/.test-results/mypy--py-3.10
+    - --lineprecision-report=.tox/.tmp/.test-results/mypy--py-3.10
+    - --txt-report=.tox/.tmp/.test-results/mypy--py-3.10
+    pass_filenames: false
+
+- repo: https://github.com/PyCQA/pylint.git
+  rev: v3.3.9
+  hooks:
+  - id: pylint
+    additional_dependencies:
+    - covdefaults  # needed by pylint-pytest due to pytest-cov loading coverage
+    - pylint-pytest ~= 2.0.0a0
+    - pytest-cov  # needed by pylint-pytest since it picks up pytest's args
+    - pytest-xdist  # needed by pylint-pytest since it picks up pytest's args
+    - pytest-subtests
+    - tox [testing] >= 4.54.0
+
+- repo: https://github.com/rhysd/actionlint.git
+  rev: v1.7.10
+  hooks:
+  - id: actionlint
+    additional_dependencies:
+    # actionlint has a shellcheck integration which extracts shell scripts in
+    # `run:` steps from GitHub Actions and checks these with shellcheck.
+    # The integration only works if shellcheck is installed.
+    - github.com/wasilibs/go-shellcheck/cmd/shellcheck@v0.11.1
+
+...
